@@ -42,13 +42,13 @@ conda activate gravomg
 ```
 3. Install the `gravomg` Python package:
 ```bash
-pip install -e ./gravomg_bindings
+pip install ./gravomg_bindings
 ```
 
-This builds the Gravo MG C++ library and wraps it in a Python binding. The `-e` flag installs the package in the current folder, rather than your default Conda folder.
+This builds the Gravo MG C++ library and wraps it in a Python binding.
 
 ### Running the experiments
-First, [download the data](https://surfdrive.surf.nl/files/index.php/s/gOAGyWdSVJVPrBb), unzip, and place it in the `gravo_mg` folder. The result should be a folder `data` in the root of this repository.
+First, [download the data](https://drive.google.com/file/d/1tX-bYgaccoic6yCWyUvucuJcKKcARVan/view?usp=sharing), unzip, and place it in the `gravo_mg` folder. The result should be a folder `data` in the root of this repository.
 
 You can run each experiment from the experiments folder, e.g.:
 ```bash
