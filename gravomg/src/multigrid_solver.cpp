@@ -11,8 +11,11 @@
 
 #include <Eigen/Eigenvalues>
 
+
+
 namespace MGBS {
 	/* Constructor */
+
 	MultigridSolver::MultigridSolver(
 		Eigen::MatrixXd& V, Eigen::MatrixXi& neigh, Eigen::SparseMatrix<double>& M) : 
 		V(V), neigh(neigh), M(M) {
@@ -44,7 +47,7 @@ namespace MGBS {
 	{
 		nearestSource.clear();
 		nearestSource.shrink_to_fit();
-
+		
 		plf::nanotimer timer;
 		timer.start();
 		if (sig06) {
@@ -53,7 +56,11 @@ namespace MGBS {
 			constructProlongationAblation();
 		} else {
 			constructProlongation();
+
 		}
+		
+		std::cout << "constructing";
+
 		hierarchyTiming["hierarchy"] = timer.get_elapsed_ms();
 
 		UOurs = U;
@@ -100,7 +107,7 @@ namespace MGBS {
 		DoF.clear();
 		DoF.shrink_to_fit();
 		DoF.push_back(levelPoints.rows());
-		while (levelPoints.rows() > lowBound && k < 10) {
+		while (levelPoints.rows() > lowBound && k < 7) {
 			double radius = std::cbrt(ratio) * computeAverageEdgeLength(levelPoints, neighLevelK);
 			// -- Setting up variables
 			// Data structure for neighbors inside level k
@@ -289,7 +296,8 @@ namespace MGBS {
 			int edgesfound = 0;
 			int fallbackCount = 0;
 			if (debug) noTriFoundMap.push_back(std::vector<int>(DoF[k]));
-
+			trianglesOfLevel.clear();
+			edgesOfLevel.clear();
 			for (int fineIdx = 0; fineIdx < DoF[k]; ++fineIdx) {
 				Eigen::RowVector3d finePoint = levelPoints.row(fineIdx);
 				int coarseIdx = nearestSource[k][fineIdx];
@@ -347,6 +355,7 @@ namespace MGBS {
 					// Float value represents distance
 					std::map<int, float> insideEdge;
 
+
 					// Iterate over all triangles
 					for (int triIdx : connectedTris[coarseIdx]) {
 						std::vector<int> tri = tris[triIdx];
@@ -360,6 +369,8 @@ namespace MGBS {
 							triFound = true;
 							minDistToTriangle = distToTriangle;
 							minTri = tri;
+							//std::cout << "\nTriangle found: " << minTri[0]<<" " << minTri[1]<<" " << minTri[2];
+							trianglesOfLevel.push_back(minTri);
 							minBary = bary;
 							break;
 						}		
@@ -396,6 +407,7 @@ namespace MGBS {
 								edgeFound = true;
 								minEdge = value;
 								minEdgeIdx = key;
+								edgesOfLevel.push_back(std::vector<int>(key, value));
 								break;
 							}
 						}
@@ -452,16 +464,23 @@ namespace MGBS {
 				}
 			}
 			if (verbose) cout << "Number of triangles unfound: " << notrisfound << endl;
+			if (verbose) cout << "Number of triangles found: " << trianglesOfLevel.size() << endl;
 			if (verbose) cout << "Number of edges found: " << edgesfound << endl;
 			if (verbose) cout << "Percentage of fallback: " << (double) fallbackCount / (double) DoF[k] * 100 << endl;
 			hierarchyTiming["triangle_selection"] += triangleSelectionTimer.get_elapsed_ms();
 
 			levelPoints = tempPoints;
+			pointsAtLevel=tempPoints;
+
+			//savePointCloudToOBJ(pointsAtLevel, trianglesOfLevel,edgesOfLevel,"coarsenedBunnyLevel" + std::to_string(k+1) + ".obj");
+
 
 			Eigen::SparseMatrix<double> ULevel;
 			ULevel.resize(DoF[k], DoF[k + 1]);
 			ULevel.setFromTriplets(AllTriplet.begin(), AllTriplet.end());
 			U.push_back(ULevel);
+			//if(k==1)
+			//std::cout << "Level "<<k << ULevel;
 			AllTriplet.clear();
 			AllTriplet.shrink_to_fit();
 			++k;

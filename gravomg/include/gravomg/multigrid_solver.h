@@ -51,10 +51,54 @@ enum Weighting {
 	INVDIST = 2
 };
 
+
+
 namespace MGBS {
+
 	class MultigridSolver
 	{
 	public:
+
+
+
+		// Function to save point cloud, triangles, and edges to an OBJ file
+		void savePointCloudToOBJ(const Eigen::MatrixXd& points, const std::vector<std::vector<int>>& triangles, const std::vector<std::vector<int>>& edges, const std::string& filename) {
+			std::ofstream outFile(filename);
+
+			if (!outFile.is_open()) {
+				std::cerr << "Error opening file: " << filename << std::endl;
+				return;
+			}
+
+			// Write each point as a vertex in the .obj format
+			for (int i = 0; i < points.rows(); ++i) {
+				outFile << "v " << points(i, 0) << " " << points(i, 1) << " " << points(i, 2) << "\n";
+			}
+
+			// Write each edge as a line in the .obj format (note OBJ uses 1-based indexing)
+			for (const auto& edge : edges) {
+				outFile << "l " << (edge[0] + 1) << " " << (edge[1] + 1) << "\n";
+			}
+
+			// Write each triangle as a face in the .obj format (note OBJ uses 1-based indexing)
+			for (const auto& tri : triangles) {
+				if (tri.size() == 3) { // Ensure it's a valid triangle
+					outFile << "f " << (tri[0] + 1) << " " << (tri[1] + 1) << " " << (tri[2] + 1) << "\n";
+				}
+				else {
+					std::cerr << "Error: Triangle does not have 3 vertices." << std::endl;
+				}
+			}
+
+			outFile.close();
+			std::cout << "Point cloud, edges, and triangles saved to " << filename << std::endl;
+		}
+
+		Eigen::MatrixXd pointsAtLevel;
+		std::vector<std::vector<int>> trianglesOfLevel;
+		std::vector<std::vector<int>> edgesOfLevel;
+
+
 		MultigridSolver(Eigen::MatrixXd& V, Eigen::MatrixXi& neigh, Eigen::SparseMatrix<double>& M);
 		~MultigridSolver();
 		/* Hierarchy-related methods */
@@ -130,7 +174,7 @@ namespace MGBS {
 		int									knnNeigh;
 		int									stoppingCriteria = 0;						//!< Types of norm for residual check => 0: rel. norm (||Ax-b||/||b||)		1: L2 M^-1 (||Ax-b||_{M-1}/||b||_{M-1})		2: L2 M (||Ax-b||{M}/||b||_{M})		3: Abs (Ax-b).norm()
 		int									maxIter = 50;
-		int									lowBound = 1000;
+		int									lowBound = 10;
 		double								ratio = 8;									// The fraction of points to keep in each level: 1 / ratio
 		Sampling							samplingStrategy = FASTDISK;				// Which sampling strategy to use. Options are: FASTDISK, POISSONDISK, FPS, RANDOM, MIS
 		Weighting							weightingScheme = BARYCENTRIC;				// Which weighting scheme to use. Options are: BARYCENTRIC, UNIFORM, INVDIST
