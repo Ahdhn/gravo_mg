@@ -199,17 +199,9 @@ int main() {
 	Eigen::MatrixXi F;  // Face indices
 
     // Load the mesh
-    //std::string filename = "plane_5.obj";
-    std::string filename = "rxdragon.obj"; //load the OBJ file from rxmesh to get vertices that match with RXMesh's laplacian construction
-    //std::string filename = "mcf_initial.obj"; //load the OBJ file from rxmesh to get vertices that match with RXMesh's laplacian construction
-
-    //rxmesh -> meshlab -> obj -> cpu gmg
-
+    std::string filename = "bumpy-cube.obj";
     //std::string filename = "sphere3.obj";
     //std::string filename = "stanford-bunny.obj";
-    //std::string filename = "bumpy-cube.obj";
-    //std::string filename = "nefertiti.obj";
-    //std::string filename = "rocker-arm.obj";
     if (!igl::readOBJ(filename, V, F)) {
         std::cerr << "Error loading the mesh." << std::endl;
         return -1;
@@ -218,66 +210,112 @@ int main() {
     // Create the neighbor matrix
     Eigen::MatrixXi neigh = createNeighborMatrix(V, F);
 
-    Eigen::SparseMatrix<double> M;
-    igl::massmatrix(V, F, igl::MASSMATRIX_TYPE_BARYCENTRIC, M);
-
     // Output the neighbor matrix
     //std::cout << "Neighbor matrix:" << std::endl;
     //std::cout << neigh << std::endl;
 
-    //Eigen::SparseMatrix<double> M;// = constructMassMatrix(V, F);
-    //Eigen::SparseMatrix<double> laplacian=constructUniformLaplacian(V.rows(),F);// = constructMassMatrix(V, F);
+    Eigen::SparseMatrix<double> M;// = constructMassMatrix(V, F);
+    Eigen::SparseMatrix<double> laplacian=constructUniformLaplacian(V.rows(),F);// = constructMassMatrix(V, F);
 
+    //MGBS::MultigridSolver mg(V, neigh,laplacian);
+
+    //construct and save laplacians to a file
+	//mg.buildHierarchy();
+ //   save_sparse_mat(laplacian, "operator0.txt");
+ //   Eigen::SparseMatrix<double> Abar = mg.U[0].transpose();// *laplacian* mg.U[0];
+
+	//for(int i=1;i<mg.U.size();i++)
+ //   {
+ //       save_sparse_mat(Abar, "operator"+std::to_string(i)+".txt");
+ //       Abar = mg.U[i].transpose();// *Abar* mg.U[i];
+ //   }
 
     
     std::string output_dir = "C:\\Users\\sachi\\OneDrive\\Documents\\GitHub\\RXMesh-fork\\Outputs";
 
-	Eigen::MatrixXd B_d = loadMatrixMarketArray(output_dir + "/dragon_B.mtx");
     Eigen::SparseMatrix<double> A;
+    Eigen::SparseMatrix<double> B;
 
     // Load a .mtx file
-    if (Eigen::loadMarket(A, output_dir + "/dragon_A.mtx")) {
+    if (Eigen::loadMarket(A, output_dir+"/A.mtx")) {
         std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
     }
     else {
         std::cerr << "\nFailed to load the matrix A." << std::endl;
         return 1;
     }
+    if (Eigen::loadMarket(B, output_dir + "/A.mtx")) {
+        std::cout << "\nSuccessfully loaded the matrix B." << std::endl;
+    }
+    else {
+        std::cerr << "\nFailed to load the matrix B." << std::endl;
+        return 1;
+    }
+
+
+    std::cout << "\nConverted B to a dense matrix. Size: " << B.rows() << " x " << B.cols() << std::endl;
     std::cout << "\n A. Size: " << A.rows() << " x " << A.cols() << std::endl;
-    std::cout << "\nConverted B to a dense matrix. Size: " << B_d.rows() << " x " << B_d.cols() << std::endl;
 
-    Eigen::MatrixXd X= Eigen::MatrixXd::Zero(A.cols(), B_d.cols()); // i.e., 10000 x 3
-    
-    MGBS::MultigridSolver mg(V, neigh, M);
+    Eigen::MatrixXd B_d = Eigen::MatrixXd(B);
+
+
+    MGBS::MultigridSolver mg(V, neigh,A);
     mg.buildHierarchy();
-    mg.solve(A, B_d, X);
-    MGBS::writeTiming(mg.hierarchyTiming, "test", "testtiming.csv", true);
-    MGBS::writeTiming(mg.solverTiming, "test", "testtiming.csv", true);
-    //MGBS::writeTiming(mg.hierarchyTiming, "test2", "testtiming.csv", false);
 
+    //mg.solve(laplacian,);
+
+   // mg.constructProlongation();
 
     
-    std::cout << X.topLeftCorner(10, 3) << std::endl;
-    std::cout << V.topLeftCorner(10, 3) << std::endl;
 
-	if (!igl::writeOBJ("smooth_dragon.obj", X, F))
-        std::cerr << "Wasn't able to write output";
-    
-	
-	/*save_sparse_mat(A, "RAlaplacian0.txt");
-    Eigen::SparseMatrix<double> Abar = mg.U[0].transpose() * A * mg.U[0];
-    save_sparse_mat(Abar, "RAlaplacian" + std::to_string(1) + ".txt");
-    save_sparse_mat(mg.U[0], "RAoperator1.txt");*/
+    //std::cout << "\nNumber of columns :" << mg.Abar[0].cols();
 
-	/*for(int i=1;i<mg.U.size();i++)
-    {
-        save_sparse_mat(Abar, "laplacian"+std::to_string(i)+".txt");
-        Abar = mg.U[i].transpose() * Abar * mg.U[i];
-    }*/
+    //std::cout << std::endl<<mg.pointsAtLevel;
 
+
+
+
+     //mg.U[0];
+
+    /*
+	Eigen::SparseMatrix<double> Abar;
+    Abar[1] = U[0].transpose() * LHS * U[0];
+    mg.U[k - 1].transpose()* V* mg.U[k - 1];
+     */
 
 
 
     return 0;
 }
 
+/*
+
+int main()
+{
+
+	//Eigen::MatrixXi& neigh;
+	//Eigen::SparseMatrix<double>& M;
+
+    // Define matrices to hold vertices and faces
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi F;
+
+    // Path to your mesh file
+    std::string filename = "stanford-bunny.obj";
+
+    // Use igl's readOBJ or readOFF to load the mesh
+    if (igl::readOBJ(filename, V, F)) {
+        std::cout << "Successfully loaded mesh!" << std::endl;
+    }
+    else {
+        std::cerr << "Failed to load mesh!" << std::endl;
+        return -1;
+    }
+
+    std::cout <<std::endl<< V(0)<<std::endl;
+
+	
+
+	std::cout << "Hello world";
+	return 0;
+}*/

@@ -173,9 +173,9 @@ namespace MGBS {
 		bool								nested = false;								// Whether to use a nested hierarchy or move the coarse points
 		int									knnNeigh;
 		int									stoppingCriteria = 0;						//!< Types of norm for residual check => 0: rel. norm (||Ax-b||/||b||)		1: L2 M^-1 (||Ax-b||_{M-1}/||b||_{M-1})		2: L2 M (||Ax-b||{M}/||b||_{M})		3: Abs (Ax-b).norm()
-		int									maxIter = 50;
-		int									lowBound = 10;
-		double								ratio = 8;									// The fraction of points to keep in each level: 1 / ratio
+		int									maxIter = 100;
+		int									lowBound = 1000;
+		double								ratio = 3;									// The fraction of points to keep in each level: 1 / ratio
 		Sampling							samplingStrategy = FASTDISK;				// Which sampling strategy to use. Options are: FASTDISK, POISSONDISK, FPS, RANDOM, MIS
 		Weighting							weightingScheme = BARYCENTRIC;				// Which weighting scheme to use. Options are: BARYCENTRIC, UNIFORM, INVDIST
 

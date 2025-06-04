@@ -472,7 +472,7 @@ namespace MGBS {
 			levelPoints = tempPoints;
 			pointsAtLevel=tempPoints;
 
-			//savePointCloudToOBJ(pointsAtLevel, trianglesOfLevel,edgesOfLevel,"coarsenedBunnyLevel" + std::to_string(k+1) + ".obj");
+			//savePointCloudToOBJ(pointsAtLevel, trianglesOfLevel,edgesOfLevel,"coarseMeshLevel" + std::to_string(k+1) + ".obj");
 
 
 			Eigen::SparseMatrix<double> ULevel;
@@ -1078,11 +1078,21 @@ namespace MGBS {
 	double  MultigridSolver::multiGridVCycleGS(Eigen::SparseMatrix<double>& A, Eigen::MatrixXd& b, Eigen::MatrixXd& x, int k, bool isDebug)
 	{
 		double tolPre = 1e-15, tolPost = 1e-15;
+		preIters = 5;
+		postIters = 5;
 		//[1] Smoothing
+		/*std::cout <<"\nPre:" << preIters;
+		std::cout <<"\nPost:" <<postIters;*/
 		GaussSeidelSmoother(A, b, x, preIters, tolPre, isDebug);
-
 		//[2] Residual
+
+		/*std::cout << "A: " << A.rows() << " x " << A.cols() << std::endl;
+		std::cout << "x: " << x.rows() << " x " << x.cols() << std::endl;
+		std::cout << "b: " << b.rows() << " x " << b.cols() << std::endl;*/
+
+
 		Eigen::MatrixXd res = b - A * x;
+		//exit(1);
 
 		//[3] Restriction
 		Eigen::MatrixXd resRest = U[k].transpose() * res;
@@ -1404,7 +1414,7 @@ namespace MGBS {
 				if (verbose) cout << "Reducing system" << endl;
 
 				Abar.resize(U.size() + 1);
-				//Mbar.resize(DoF.size());
+				Mbar.resize(DoF.size());
 				Abar[1] = U[0].transpose() * LHS * U[0];
 				for (int k = 2; k < U.size() + 1; ++k) {
 					Abar[k] = U[k - 1].transpose() * Abar[k - 1] * U[k - 1];
