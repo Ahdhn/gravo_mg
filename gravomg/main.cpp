@@ -6,8 +6,14 @@
 #include<gravomg/multigrid_solver.h>
 
 #include<igl/readOBJ.h>
+#include <igl/writeOBJ.h>
+#include <igl/per_vertex_normals.h>
+
+#include <igl/massmatrix.h>
 
 #include <unsupported/Eigen/SparseExtra>
+
+#include "gravomg/utility.h"
 
 
 void savePointCloudToOBJ(const Eigen::MatrixXd& points, const std::string& filename) {
@@ -194,94 +200,93 @@ Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
 }
 
 
-int main() {
-	Eigen::MatrixXd V;  // Vertex coordinates
-	Eigen::MatrixXi F;  // Face indices
+int main(int argc, char** argv) {
+    Eigen::MatrixXd V;  // Vertex coordinates
+    Eigen::MatrixXi F;  // Face indices
+    Eigen::MatrixXd N;
 
     // Load the mesh
-    std::string filename = "bumpy-cube.obj";
-    //std::string filename = "sphere3.obj";
-    //std::string filename = "stanford-bunny.obj";
+    std::string filename = "C:\\Github\\RXMesh\\input\\bumpy-cube.obj";
+    if (argc > 1) {
+        filename = std::string(argv[1]);
+    }
+
     if (!igl::readOBJ(filename, V, F)) {
         std::cerr << "Error loading the mesh." << std::endl;
         return -1;
     }
 
-    // Create the neighbor matrix
+    igl::per_vertex_normals(V, F, N);
+
+    //MGBS::normalize_unit_area(V, F);
+
+    Eigen::SparseMatrix<double> M, S;
+
+    igl::massmatrix(V, F, MASSMATRIX_TYPE_VORONOI, M);
+
+    igl::cotmatrix(V, F, S);
+
     Eigen::MatrixXi neigh = createNeighborMatrix(V, F);
-
-    // Output the neighbor matrix
-    //std::cout << "Neighbor matrix:" << std::endl;
-    //std::cout << neigh << std::endl;
-
-    Eigen::SparseMatrix<double> M;// = constructMassMatrix(V, F);
-    Eigen::SparseMatrix<double> laplacian=constructUniformLaplacian(V.rows(),F);// = constructMassMatrix(V, F);
-
-
-
-
-
-    MGBS::MultigridSolver mg(V, neigh,laplacian);
-
-	mg.buildHierarchy();
-    save_sparse_mat(laplacian, "laplacian0.txt");
-    Eigen::SparseMatrix<double> Abar = mg.U[0].transpose() * laplacian * mg.U[0];
-
-	for(int i=1;i<mg.U.size();i++)
-    {
-        save_sparse_mat(Abar, "laplacian"+std::to_string(i)+".txt");
-        Abar = mg.U[i].transpose() * Abar * mg.U[i];
-    }
-
-    /*
-    std::string output_dir = "C:\\Users\\sachi\\OneDrive\\Documents\\GitHub\\RXMesh-fork\\Outputs";
-
-    Eigen::SparseMatrix<double> A;
-    Eigen::SparseMatrix<double> B;
-
-    // Load a .mtx file
-    if (Eigen::loadMarket(A, output_dir+"/A.mtx")) {
-        std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
-    }
-    else {
-        std::cerr << "\nFailed to load the matrix A." << std::endl;
-        return 1;
-    }
-    if (Eigen::loadMarket(B, output_dir + "/A.mtx")) {
-        std::cout << "\nSuccessfully loaded the matrix B." << std::endl;
-    }
-    else {
-        std::cerr << "\nFailed to load the matrix B." << std::endl;
-        return 1;
-    }
-
-
-    std::cout << "\nConverted B to a dense matrix. Size: " << B.rows() << " x " << B.cols() << std::endl;
-    std::cout << "\n A. Size: " << A.rows() << " x " << A.cols() << std::endl;
-
-    Eigen::MatrixXd B_d = Eigen::MatrixXd(B);
-
-    */
-    //mg.solve(laplacian,);
-
-   // mg.constructProlongation();
 
     
 
-    //std::cout << "\nNumber of columns :" << mg.Abar[0].cols();
+    //Eigen::SparseMatrix<double> L = constructUniformLaplacian(V.rows(), F);// = constructMassMatrix(V, F);
+    //save_sparse_mat(L, "laplacian0.txt");
 
-    //std::cout << std::endl<<mg.pointsAtLevel;
+    MGBS::MultigridSolver mg(V, neigh, M);
+
+    mg.buildHierarchy();
+
+    Eigen::SparseMatrix<double> lhs;
+    Eigen::MatrixXd rhs;
+
+    double tau = 1.0;
+
+    for (int i = 0; i < 100; ++i) {
+        igl::massmatrix(V, F, MASSMATRIX_TYPE_VORONOI, M);
+        lhs = M + tau * S;
+        rhs = M * V;
+
+        mg.solve(lhs, rhs, V);
+
+        //MGBS::normalize_unit_area(V, F);
+
+        if (i % 10 == 0) {
+            igl::writeOBJ("out_" + std::to_string(i) + ".obj", V, F);
+        }
+    }
+
+
+    //Eigen::SparseMatrix<double> Abar = mg.U[0].transpose() * L * mg.U[0];
+
+    //for (int i = 1; i < mg.U.size(); i++)
+    //{
+    //    save_sparse_mat(Abar, "laplacian" + std::to_string(i) + ".txt");
+    //    Abar = mg.U[i].transpose() * Abar * mg.U[i];
+    //}
 
 
 
-
-     //mg.U[0];
-
-    /*
-	Eigen::SparseMatrix<double> Abar;
-    Abar[1] = U[0].transpose() * LHS * U[0];
-    mg.U[k - 1].transpose()* V* mg.U[k - 1];
-     */
+    //std::string output_dir = "C:\\Users\\sachi\\OneDrive\\Documents\\GitHub\\RXMesh-fork\\Outputs";
+    //
+    //Eigen::SparseMatrix<double> A;
+    //Eigen::SparseMatrix<double> B;
+    //
+    //// Load a .mtx file
+    //if (Eigen::loadMarket(A, output_dir+"/A.mtx")) {
+    //    std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
+    //}
+    //else {
+    //    std::cerr << "\nFailed to load the matrix A." << std::endl;
+    //    return 1;
+    //}
+    //if (Eigen::loadMarket(B, output_dir + "/A.mtx")) {
+    //    std::cout << "\nSuccessfully loaded the matrix B." << std::endl;
+    //}
+    //else {
+    //    std::cerr << "\nFailed to load the matrix B." << std::endl;
+    //    return 1;
+    //}
 
 
 

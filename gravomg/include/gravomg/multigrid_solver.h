@@ -118,11 +118,12 @@ namespace MGBS {
 
 		// Multigrid solvers	
 		// Using Gauss-Seidel Smoother (our main process)
-		double multiGridVCycleGS(Eigen::SparseMatrix<double>& A, Eigen::MatrixXd& b, Eigen::MatrixXd& x, int k, bool isDebug = true);
+		template<typename MatrixType>
+		double multiGridVCycleGS(MatrixType& A, Eigen::MatrixXd& b, Eigen::MatrixXd& x, int k, bool isDebug = true);
 		double multiGridFCycleGS(Eigen::SparseMatrix<double>& A, Eigen::MatrixXd& b, Eigen::MatrixXd& x, int k, bool isDebug = true);
 		double multiGridWCycleGS(Eigen::SparseMatrix<double>& A, Eigen::MatrixXd& b, Eigen::MatrixXd& x, int k, bool isDebug = true);
-		void GaussSeidelSmoother(Eigen::SparseMatrix<double>& LHS, Eigen::MatrixXd& rhs,
-			Eigen::MatrixXd& x, int maxIter, double tol, bool isDebug = true);
+		void GaussSeidelSmoother(Eigen::SparseMatrix<double>& LHS, Eigen::MatrixXd& rhs, Eigen::MatrixXd& x, int maxIter, double tol, bool isDebug = true);
+		void GaussSeidelSmoother(Eigen::MatrixXd& LHS,             Eigen::MatrixXd& rhs, Eigen::MatrixXd& x, int maxIter, double tol, bool isDebug = true);
 
 		double residualCheck(const Eigen::SparseMatrix<double>& A, const Eigen::MatrixXd& b, const Eigen::MatrixXd& x, int type);
 
@@ -144,12 +145,16 @@ namespace MGBS {
 		std::vector<std::vector<int>>		noTriFoundMap;
 		std::vector<std::vector<std::vector<int>>>		allTriangles;
 		std::vector<Eigen::MatrixXd>		levelN;
+		std::vector<std::vector<std::set<int>>> mNeighborsList;         //!< vertex connectivity for each level in the hierarchy. mNeighborsList[0] is the first coarse level
 		
 		/* Hierarchy data*/
 		std::vector<size_t>								DoF;							//!< Degrees of freedom per level
 		std::vector<Eigen::SparseMatrix<double>>		U, USig, UOurs, USigBary;		//!< Prolongation operator (U: what system sees, selected from either: USig (the Derek + Alec's MG) or UOurs (our implementation)
+		std::vector<Eigen::MatrixXd>		            UDense;
+		bool UseDense;
 		std::vector<Eigen::SparseMatrix<double>>		UNeigh;					
 		std::vector<Eigen::SparseMatrix<double>>		Abar, Sbar, Mbar;				//!< Reduced system matrices
+		std::vector<Eigen::MatrixXd>		AbarDense;
 		std::vector<Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper>> cgSolvers;
 		std::vector<size_t>								sampleIDHierarchy;
 		std::vector<Eigen::MatrixXi>					neighHierarchy;
@@ -176,7 +181,7 @@ namespace MGBS {
 		int									maxIter = 50;
 		int									lowBound = 10;
 		double								ratio = 8;									// The fraction of points to keep in each level: 1 / ratio
-		Sampling							samplingStrategy = FASTDISK;				// Which sampling strategy to use. Options are: FASTDISK, POISSONDISK, FPS, RANDOM, MIS
+		Sampling							samplingStrategy = RANDOM;				// Which sampling strategy to use. Options are: FASTDISK, POISSONDISK, FPS, RANDOM, MIS
 		Weighting							weightingScheme = BARYCENTRIC;				// Which weighting scheme to use. Options are: BARYCENTRIC, UNIFORM, INVDIST
 
 		Eigen::MatrixXi						neigh;										//!< Neighboring informaiton of the lowest level
@@ -187,6 +192,7 @@ namespace MGBS {
 		int postIters;
 		double accuracy = 5e-4;
 		Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> coarsestSolver;
+		Eigen::LDLT<Eigen::MatrixXd> coarsestSolverDense;
 		bool POUtruncated = true;
 
 		/* Dummy data*/

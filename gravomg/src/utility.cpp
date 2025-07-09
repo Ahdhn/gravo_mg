@@ -75,7 +75,7 @@ namespace MGBS {
 		ofstream myfile(filename.c_str());
 		if (myfile.is_open())
 		{
-			cout << "Write file to text \n";
+			//cout << "Write file to text \n";
 			for (int k = 0; k < M.outerSize(); ++k) {
 				for (Eigen::SparseMatrix<double>::InnerIterator it(M, k); it; ++it) {					
 					myfile << it.row() << "\t" << it.col() << "\t" << it.value() << "\n";
@@ -91,7 +91,7 @@ namespace MGBS {
 		ofstream myfile(filename.c_str());
 		if (myfile.is_open())
 		{
-			cout << "Write file to text \n";
+			//cout << "Write file to text \n";
 			for (int i = 0; i < M.rows(); ++i) {
 				for (int j = 0; j < M.cols(); ++j) {					
 					myfile << M(i, j) << "\t"; 

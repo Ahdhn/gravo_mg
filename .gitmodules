@@ -1,3 +1,6 @@
 [submodule "gravomg_bindings/deps/pybind11"]
 	path = gravomg_bindings/deps/pybind11
 	url = https://github.com/pybind/pybind11.git
+[submodule "gravomg/deps/EigenRand"]
+	path = gravomg/deps/EigenRand
+	url = https://github.com/bab2min/EigenRand.git

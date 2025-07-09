@@ -51,9 +51,10 @@ SET(HEADER_FILES
     include/gravomg/utility.h
     include/gravomg/sampling.h
 )
+add_subdirectory("deps/EigenRand")
 
 add_library(gravomg ${SRC_FILES} ${HEADER_FILES})
-target_link_libraries(gravomg PUBLIC igl::core OpenMP::OpenMP_CXX)
+target_link_libraries(gravomg PUBLIC igl::core OpenMP::OpenMP_CXX EigenRand::EigenRand)
 target_include_directories(gravomg PUBLIC include src/sig21)
 
 # Pardiso support
