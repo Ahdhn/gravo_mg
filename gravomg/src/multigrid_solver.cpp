@@ -1636,7 +1636,7 @@ namespace MGBS {
                         //writeSparseMatrixToFile(pruned, "pruned_" + std::to_string(k));
 
 
-                        printf("\n Level %d pruned!", k);
+                        //printf("\n Level %d pruned!", k);
                         //Abar[k] = pruned;
 
                     }

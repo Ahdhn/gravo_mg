@@ -1,19 +1,11 @@
-
-
+#include <fstream>
 #include <iostream>
-#include <unordered_set>
 
-#include<gravomg/multigrid_solver.h>
+#include "MultigridSolverAPI.h"
 
 #include<igl/readOBJ.h>
-#include <igl/writeOBJ.h>
-#include <igl/per_vertex_normals.h>
-
-#include <igl/massmatrix.h>
 
 #include <unsupported/Eigen/SparseExtra>
-
-#include "gravomg/utility.h"
 
 
 void savePointCloudToOBJ(const Eigen::MatrixXd& points, const std::string& filename) {
@@ -160,10 +152,6 @@ void save_sparse_mat(const Eigen::SparseMatrix<T>& mat, const std::string& filen
 }
 
 
-#include <iostream>
-#include <fstream>
-#include <Eigen/Dense>
-#include <sstream>
 
 Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
     std::ifstream file(filename);
@@ -185,9 +173,9 @@ Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
 
     Eigen::MatrixXd matrix(rows, cols);
 
-    // Read matrix values row-wise
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
+    // Read matrix values col-wise
+    for (int j = 0; j < cols; ++j) {
+        for (int i = 0; i < rows; ++i) {
             double value;
             if (!(file >> value)) {
                 throw std::runtime_error("Unexpected end of file.");
@@ -200,96 +188,73 @@ Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
 }
 
 
-int main(int argc, char** argv) {
-    Eigen::MatrixXd V;  // Vertex coordinates
-    Eigen::MatrixXi F;  // Face indices
-    Eigen::MatrixXd N;
+int main() {
 
-    // Load the mesh
-    std::string filename = "C:\\Github\\RXMesh\\input\\bumpy-cube.obj";
-    if (argc > 1) {
-        filename = std::string(argv[1]);
-    }
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi F;
+
+    std::string filename = "C://Github//gravo_mg//gravomg//build//sphere3.obj";
 
     if (!igl::readOBJ(filename, V, F)) {
         std::cerr << "Error loading the mesh." << std::endl;
         return -1;
     }
 
-    igl::per_vertex_normals(V, F, N);
+    std::string output_dir = "C://Github//gravo_mg//gravomg//build";
 
-    //MGBS::normalize_unit_area(V, F);
+    Eigen::MatrixXd B_d = loadMatrixMarketArray(output_dir + "//sphere3_B.mtx");
+    Eigen::SparseMatrix<double> A;
 
-    Eigen::SparseMatrix<double> M, S;
-
-    igl::massmatrix(V, F, MASSMATRIX_TYPE_VORONOI, M);
-
-    igl::cotmatrix(V, F, S);
-
-    Eigen::MatrixXi neigh = createNeighborMatrix(V, F);
-
-    
-
-    //Eigen::SparseMatrix<double> L = constructUniformLaplacian(V.rows(), F);// = constructMassMatrix(V, F);
-    //save_sparse_mat(L, "laplacian0.txt");
-
-    MGBS::MultigridSolver mg(V, neigh, M);
-
-    mg.buildHierarchy();
-
-    Eigen::SparseMatrix<double> lhs;
-    Eigen::MatrixXd rhs;
-
-    double tau = 1.0;
-
-    for (int i = 0; i < 100; ++i) {
-        igl::massmatrix(V, F, MASSMATRIX_TYPE_VORONOI, M);
-        lhs = M + tau * S;
-        rhs = M * V;
-
-        mg.solve(lhs, rhs, V);
-
-        //MGBS::normalize_unit_area(V, F);
-
-        if (i % 10 == 0) {
-            igl::writeOBJ("out_" + std::to_string(i) + ".obj", V, F);
-        }
+    // Load a .mtx file
+    if (Eigen::loadMarket(A, output_dir + "//sphere3_A.mtx")) {
+        std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
     }
+    else {
+        std::cerr << "\nFailed to load the matrix A." << std::endl;
+        return 0;
+    }
+    A.makeCompressed();
 
+    std::cout << "\n A Size: " << A.rows() << " x " << A.cols() << " with " << A.nonZeros() << " nnz" << std::endl;
+    std::cout << "\n B Size: " << B_d.rows() << " x " << B_d.cols() << std::endl;
 
-    //Eigen::SparseMatrix<double> Abar = mg.U[0].transpose() * L * mg.U[0];
+    //Gravo GMG
+    Eigen::MatrixXi neigh = createNeighborMatrix(V, F);
+    Eigen::SparseMatrix<double> M;
+    igl::massmatrix(V, F, igl::MASSMATRIX_TYPE_BARYCENTRIC, M);
 
-    //for (int i = 1; i < mg.U.size(); i++)
-    //{
-    //    save_sparse_mat(Abar, "laplacian" + std::to_string(i) + ".txt");
-    //    Abar = mg.U[i].transpose() * Abar * mg.U[i];
-    //}
+    double ratio = 8;
+    int low_bound = 50;
+    int cycle_type = 0;
+    double tolerance = 1e-6;
+    int stopping_criteria = 2;
+    int pre_iters = 2;
+    int post_iters = 2;
+    int max_iter = 1000;
+    bool check_voronoi = true;
+    bool nested = false;
+    Sampling sampling_strategy = FASTDISK;
+    Weighting weighting = BARYCENTRIC;
+    bool sig06 = false;
+    Eigen::MatrixXd normals = V;
+    bool verbose = false;
+    bool debug = false;
+    bool ablation = false;
+    int ablation_num_points = 3;
+    bool ablation_random = false;
 
+    MultigridSolverAPI solver(
+        V, neigh, M, //System
+        ratio, low_bound,  // Hierarchy settings
+        cycle_type, tolerance, stopping_criteria, pre_iters, post_iters, max_iter, // Solver settings
+        check_voronoi, nested, sampling_strategy, weighting, sig06, normals, verbose, debug, // Debug settings
+        ablation, ablation_num_points, ablation_random);// Ablations
 
+    Eigen::MatrixXd X = solver.solve(A, B_d);
 
-    //std::string output_dir = "C:\\Users\\sachi\\OneDrive\\Documents\\GitHub\\RXMesh-fork\\Outputs";
-    //
-    //Eigen::SparseMatrix<double> A;
-    //Eigen::SparseMatrix<double> B;
-    //
-    //// Load a .mtx file
-    //if (Eigen::loadMarket(A, output_dir+"/A.mtx")) {
-    //    std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
-    //}
-    //else {
-    //    std::cerr << "\nFailed to load the matrix A." << std::endl;
-    //    return 1;
-    //}
-    //if (Eigen::loadMarket(B, output_dir + "/A.mtx")) {
-    //    std::cout << "\nSuccessfully loaded the matrix B." << std::endl;
-    //}
-    //else {
-    //    std::cerr << "\nFailed to load the matrix B." << std::endl;
-    //    return 1;
-    //}
-
-
+    if (!igl::writeOBJ("output.obj", X, F)) {
+        std::cerr << "Wasn't able to write output";
+    }
 
     return 0;
 }
-
