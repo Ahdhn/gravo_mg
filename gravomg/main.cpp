@@ -7,24 +7,6 @@
 
 #include <unsupported/Eigen/SparseExtra>
 
-
-void savePointCloudToOBJ(const Eigen::MatrixXd& points, const std::string& filename) {
-    std::ofstream outFile(filename);
-
-    if (!outFile.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
-        return;
-    }
-
-    // Loop through each point and write it as a vertex in the .obj format
-    for (int i = 0; i < points.rows(); ++i) {
-        outFile << "v " << points(i, 0) << " " << points(i, 1) << " " << points(i, 2) << "\n";
-    }
-
-    outFile.close();
-    std::cout << "Point cloud saved to " << filename << std::endl;
-}
-
 Eigen::MatrixXi createNeighborMatrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F) {
     // Number of vertices
     int numVertices = V.rows();
@@ -68,90 +50,6 @@ Eigen::MatrixXi createNeighborMatrix(const Eigen::MatrixXd& V, const Eigen::Matr
 
     return neigh;
 }
-
-Eigen::SparseMatrix<double> constructMassMatrix(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F) {
-    int numVertices = V.rows();
-    Eigen::SparseMatrix<double> M(numVertices, numVertices);
-
-    // Loop over each face (triangle)
-    for (int f = 0; f < F.rows(); ++f) {
-        // Get the indices of the vertices of the triangle
-        int v1 = F(f, 0);
-        int v2 = F(f, 1);
-        int v3 = F(f, 2);
-
-        // Calculate the area of the triangle
-        Eigen::Vector3d p1 = V.row(v1);
-        Eigen::Vector3d p2 = V.row(v2);
-        Eigen::Vector3d p3 = V.row(v3);
-        double area = 0.5 * ((p2 - p1).cross(p3 - p1)).norm();
-
-        // Update the mass matrix entries
-        M.coeffRef(v1, v1) += area / 3.0; // Vertex v1 shares area with the triangle
-        M.coeffRef(v2, v2) += area / 3.0; // Vertex v2 shares area with the triangle
-        M.coeffRef(v3, v3) += area / 3.0; // Vertex v3 shares area with the triangle
-
-        M.coeffRef(v1, v2) += area / 6.0; // Off-diagonal entries for interactions
-        M.coeffRef(v1, v3) += area / 6.0;
-        M.coeffRef(v2, v1) += area / 6.0;
-        M.coeffRef(v2, v3) += area / 6.0;
-        M.coeffRef(v3, v1) += area / 6.0;
-        M.coeffRef(v3, v2) += area / 6.0;
-    }
-
-    M.makeCompressed(); // Optional: compress the sparse matrix for efficiency
-    return M;
-}
-
-Eigen::SparseMatrix<double> constructUniformLaplacian(int numVertices, const Eigen::MatrixXi& F) {
-    using Triplet = Eigen::Triplet<double>;
-    std::vector<Triplet> triplets;
-    Eigen::VectorXd degree(numVertices);
-    degree.setZero();
-
-    // Loop over each face (triangle)
-    for (int f = 0; f < F.rows(); ++f) {
-        int v1 = F(f, 0);
-        int v2 = F(f, 1);
-        int v3 = F(f, 2);
-
-        // Each pair of vertices in a triangle defines an edge
-        degree(v1) += 1;
-        degree(v2) += 1;
-        degree(v3) += 1;
-
-        triplets.emplace_back(v1, v2, -1);
-        triplets.emplace_back(v2, v1, -1);
-        triplets.emplace_back(v1, v3, -1);
-        triplets.emplace_back(v3, v1, -1);
-        triplets.emplace_back(v2, v3, -1);
-        triplets.emplace_back(v3, v2, -1);
-    }
-
-    // Set diagonal entries
-    for (int i = 0; i < numVertices; ++i) {
-        triplets.emplace_back(i, i, degree(i));
-    }
-
-    Eigen::SparseMatrix<double> L(numVertices, numVertices);
-    L.setFromTriplets(triplets.begin(), triplets.end());
-    return L;
-}
-
-template<typename T>
-void save_sparse_mat(const Eigen::SparseMatrix<T>& mat, const std::string& filename) {
-    std::ofstream file(filename);
-
-    for (int k = 0; k < mat.outerSize(); ++k) {
-        for (Eigen::SparseMatrix<T>::InnerIterator it(mat, k); it; ++it) {
-            file << it.row() << " " << it.col() << " " << it.value() << "\n";
-        }
-    }
-
-    file.close();
-}
-
-
 
 Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
     std::ifstream file(filename);
