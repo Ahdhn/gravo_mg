@@ -17,10 +17,11 @@ from robust_laplacian import mesh_laplacian, point_cloud_laplacian
 from util import read_mesh
 
 # Read mesh
-#V, F = read_mesh(Path('C:/Github/RXMesh/input/dragon.obj').resolve())
+V, F = read_mesh(Path('C:/Github/RXMesh/input/dragon.obj').resolve())
 #V, F = read_mesh(Path('C:/Github/RXMesh/input/ear2.obj').resolve())
 #V, F = read_mesh(Path('C:/Github/RXMesh/input/SI/Alexander_Olympias_CN.obj').resolve())
-V, F = read_mesh(Path('C:/Github/RXMesh/input/Nefertiti.obj').resolve())
+#V, F = read_mesh(Path('C:/Github/RXMesh/input/Nefertiti.obj').resolve())
+#V, F = read_mesh(Path('C:/Github/RXMesh/input/sphere3.obj').resolve())
 
 N = igl.per_vertex_normals(V, F)
 
@@ -45,7 +46,7 @@ solver = MultigridSolver(V,
                          ratio=8, 
                          lower_bound=1000, 
                          tolerance=1e-6, 
-                         max_iter=20, 
+                         max_iter=100, 
                          sampling_strategy=Sampling.FASTDISK)
 print(f'Our construction time: {time.perf_counter() - t}')
 
@@ -53,6 +54,8 @@ print(f'Our construction time: {time.perf_counter() - t}')
 ui_tau = 0.0001
 
 def smoothing(tau):
+    global M, S, V, F
+    
     lhs = M + tau * S
     lhs_csr = lhs.tocsr()
     
@@ -64,6 +67,10 @@ def smoothing(tau):
     print(f'Our residual: {solver.residual(lhs, rhs, mg_V)}')
 
     mesh.update_vertex_positions(mg_V)
+    
+    V = mg_V
+    M = igl.massmatrix(V, F, igl.MASSMATRIX_TYPE_VORONOI)
+    S = -igl.cotmatrix(V, F)
 
 
 # GUI
