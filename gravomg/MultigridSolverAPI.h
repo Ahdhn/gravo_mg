@@ -116,6 +116,20 @@ public:
         MGBS::writeTiming(solver->solverTiming, experiment, file, write_headers);
     }
 
+    void write_single_row_timing(string experiment, string file, bool write_headers)
+    {
+        map<string, double> all_timings;
+        for (auto const& t : solver->hierarchyTiming)
+            all_timings["hierarchy_timing_" + t.first] = t.second;
+
+        for (auto const& t : solver->solverTiming)
+            all_timings["solver_timing_" + t.first] = t.second;
+
+        MGBS::writeTiming(all_timings, experiment, file, write_headers);
+
+
+    }
+
     void write_convergence(string file) {
         MGBS::writeConvergence(solver->convergence, file);
     }

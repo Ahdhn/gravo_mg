@@ -1,4 +1,4 @@
-#include <fstream>
+﻿#include <fstream>
 #include <iostream>
 
 #include "MultigridSolverAPI.h"
@@ -85,26 +85,58 @@ Eigen::MatrixXd loadMatrixMarketArray(const std::string& filename) {
     return matrix;
 }
 
+void read_command_line(int argc, char* argv[])
+{
+    if (argc < 6) {
+        std::cerr << "Usage: " << argv[0] << " <mesh.obj> <A.mtx> <B.mtx> <experiment_name> <timing.csv> [writeHeaders]\n";
 
-int main() {
+    }
+
+    std::string mesh_file = argv[1];
+    std::string A_file = argv[2];
+    std::string B_file = argv[3];
+    std::string experiment_name = argv[4];
+    std::string timing_file = argv[5];
+    bool write_headers = (argc >= 7) ? (std::string(argv[6]) == "1" || std::string(argv[6]) == "true") : false;
+}
+
+
+int main(int argc, char* argv[]) 
+{
+    std::string mesh_file = "rxdragon.obj";
+    std::string A_file = "dragon_A.mtx";
+    std::string B_file = "dragon_B.mtx";
+    std::string experiment_name = "Dragon_Test";
+    std::string timing_file = "testtiming.csv";
+    std::string input_directory = "";
+    bool write_headers = false;
 
     Eigen::MatrixXd V;
     Eigen::MatrixXi F;
 
-    std::string filename = "C://Github//gravo_mg//gravomg//build//sphere3.obj";
+
+    if (argc >= 6)
+    {
+        mesh_file = argv[1];
+        A_file = argv[2];
+        B_file = argv[3];
+        experiment_name = argv[4];
+        timing_file = argv[5];
+        write_headers = (argc >= 7) ? (std::string(argv[6]) == "1" || std::string(argv[6]) == "true") : false;
+    }
+
+    std::string filename = mesh_file;
 
     if (!igl::readOBJ(filename, V, F)) {
         std::cerr << "Error loading the mesh." << std::endl;
         return -1;
     }
 
-    std::string output_dir = "C://Github//gravo_mg//gravomg//build";
-
-    Eigen::MatrixXd B_d = loadMatrixMarketArray(output_dir + "//sphere3_B.mtx");
+    Eigen::MatrixXd B_d = loadMatrixMarketArray(input_directory + B_file);
     Eigen::SparseMatrix<double> A;
 
     // Load a .mtx file
-    if (Eigen::loadMarket(A, output_dir + "//sphere3_A.mtx")) {
+    if (Eigen::loadMarket(A, input_directory + A_file)) {
         std::cout << "\nSuccessfully loaded the matrix A." << std::endl;
     }
     else {
@@ -154,5 +186,6 @@ int main() {
         std::cerr << "Wasn't able to write output";
     }
 
+    solver.write_single_row_timing(experiment_name, timing_file, write_headers);
     return 0;
 }

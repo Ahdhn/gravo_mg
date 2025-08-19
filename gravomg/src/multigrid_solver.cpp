@@ -63,9 +63,9 @@ namespace MGBS {
 
         }
 
-        std::cout << "constructing";
 
         hierarchyTiming["hierarchy"] = timer.get_elapsed_ms();
+        std::cout << "constructed";
 
         UOurs = U;
     }
@@ -1541,6 +1541,8 @@ namespace MGBS {
                         //writeSparseMatrixToFile(Abar[k], "Abar_" + std::to_string(k));
                     }
                 }
+                hierarchyTiming["PtAP"] = solverTotalTimer.get_elapsed_ms();
+                hierarchyTiming["levels"] = U.size()+1;
 
 
                 {
